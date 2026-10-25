@@ -107,6 +107,9 @@ details ul{margin:10px 0 0;padding-left:20px;display:flex;flex-direction:column;
 .card.going{box-shadow:0 0 0 3px var(--gold),0 0 16px rgba(225,185,90,.55);opacity:1;cursor:default}
 .card.going.stolen{box-shadow:0 0 0 3px var(--danger),0 0 16px rgba(224,128,107,.55)}
 .prompt.notice{font-size:1rem}
+.ghostgrp{display:flex;flex-wrap:wrap;gap:inherit;justify-content:center}
+.ghostgrp.gap{margin-left:28px}
+@media (max-width:520px){.ghostgrp.gap{margin-left:18px}}
 .card.sm{width:54px;height:81px;border-radius:7px}.card.sm .pip{width:30px;height:30px}.card.sm .cr{font-size:1rem;top:4px;left:5px}.card.sm .cn,.card.sm .cv{display:none}
 .l70{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:10px}
 .r70{padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.04);display:flex;flex-direction:column;gap:8px}
@@ -315,7 +318,7 @@ function renderGame(){
   app.innerHTML=`<div class="topbar"><div><div class="eyebrow">Table <span class="code">${esc(s.code)}</span> · Round ${s.round} · to ${s.target}</div><h2>Escoba de 15</h2></div><div class="row"><span class="note">${s.deckCount||0} cards in deck</span>${back}</div></div>
   <div class="players">${players}</div>
   <section class="felt"><div class="eyebrow">Table</div>
-    <div class="cards">${(s.table||[]).map(c=>cardHTML(c,{act:'table',sel:selTable.has(c),hint:hint&&hint.take.includes(c),fresh:freshSet.has(c),dis:!tableClickable})).join('')}${ghosts.map(c=>cardHTML(c,{dis:true,cls:ghostCls})).join('')}${!(s.table||[]).length&&!ghosts.length?'<span class="note">The table is empty.</span>':''}</div>
+    <div class="cards">${(s.table||[]).map(c=>cardHTML(c,{act:'table',sel:selTable.has(c),hint:hint&&hint.take.includes(c),fresh:freshSet.has(c),dis:!tableClickable})).join('')}${ghosts.length?`<span class="ghostgrp${(s.table||[]).length?' gap':''}">${ghosts.map(c=>cardHTML(c,{dis:true,cls:ghostCls})).join('')}</span>`:''}${!(s.table||[]).length&&!ghosts.length?'<span class="note">The table is empty.</span>':''}</div>
     ${notice?`<div class="prompt notice">${notice}</div>`:''}<div class="prompt">${prompt}</div></section>
   ${bottom}
   <section class="panel"><div class="row" style="justify-content:space-between"><h3>Table talk</h3>${s.host===pid?'<button class="btn small ghost" data-act="end">Close table</button>':''}</div>${historyOn?`<ul class="log">${(s.log||[]).map(l=>`<li>${esc(l)}</li>`).join('')}</ul>`:'<p class="hiddenlog">Table talk is hidden at this table. Keep track of what everyone takes yourself.</p>'}</section>`;
