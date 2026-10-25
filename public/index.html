@@ -101,8 +101,18 @@ details ul{margin:10px 0 0;padding-left:20px;display:flex;flex-direction:column;
 .flash small{display:block;font-size:1.4rem;color:var(--ink);text-shadow:0 2px 8px rgba(0,0,0,.6)}
 @keyframes pop{0%{transform:scale(.4) rotate(-8deg);opacity:0}15%{transform:scale(1.08) rotate(2deg);opacity:1}70%{transform:scale(1);opacity:1}100%{transform:scale(1);opacity:0}}
 @media (prefers-reduced-motion:reduce){.card,.flash div,.just{transition:none;animation:none}}
-@media (max-width:520px){.card .cn{display:none}.card{width:76px;height:114px}.card .pip{width:42px;height:42px}.card .cr{font-size:1.3rem}.cards{gap:8px;min-height:118px}}
-.card.fresh{box-shadow:0 0 0 3px #8fd3b4,0 6px 14px rgba(0,0,0,.25)}
+@media (max-width:520px){.justslot{min-height:180px}.card .cn{display:none}.card{width:76px;height:114px}.card .pip{width:42px;height:42px}.card .cr{font-size:1.3rem}.cards{gap:8px;min-height:118px}}
+.card.fresh{box-shadow:0 0 0 3px #8fd3b4,0 6px 14px rgba(0,0,0,.25);animation:glow 2.5s ease forwards}
+@keyframes glow{0%,70%{box-shadow:0 0 0 4px #8fd3b4,0 0 18px #8fd3b4}100%{box-shadow:0 2px 0 rgba(0,0,0,.25),0 6px 14px rgba(0,0,0,.25)}}
+.justslot{width:100%;min-height:214px;display:flex;align-items:flex-start;justify-content:center}
+.card.sm{width:54px;height:81px;border-radius:7px}.card.sm .pip{width:30px;height:30px}.card.sm .cr{font-size:1rem;top:4px;left:5px}.card.sm .cn,.card.sm .cv{display:none}
+.l70{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:10px}
+.r70{padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.04);display:flex;flex-direction:column;gap:8px}
+.r70h{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.v70{font-family:var(--display);font-weight:800;color:var(--gold);font-variant-numeric:tabular-nums}
+.r70c{display:flex;gap:8px;flex-wrap:wrap}
+.c70{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:.85rem;color:var(--ink-dim);font-variant-numeric:tabular-nums}
+.miss{width:54px;height:81px;border-radius:7px;border:1.5px dashed var(--felt-line);display:flex;align-items:center;justify-content:center;text-align:center;font-size:.7rem;padding:4px;color:var(--ink-dim)}
 .just{width:100%;display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px;border-radius:16px;background:rgba(0,0,0,.28);border:1px solid var(--gold-deep);animation:fadeout 5s ease forwards}
 .just .who{font-size:1.05rem}
 .just .who b{color:var(--gold)}
@@ -137,7 +147,7 @@ function unstore(k){try{localStorage.removeItem(k)}catch(e){}}
 let pid=load('escoba.pid'); if(!pid){pid='p'+Math.random().toString(36).slice(2,12);store('escoba.pid',pid)}
 let myName=load('escoba.name')||'';
 let offline=false,ready=false,view='lobby',code=null,game=null,es=null,openGames=[];
-let selHand=null,selTable=new Set(),hint=null,busy=false,lastRev=-1,lastFlash=null,shownRev=null,lastShow=null;
+let stealMode=false,selHand=null,selTable=new Set(),hint=null,busy=false,lastRev=-1,lastFlash=null,shownRev=null,lastShow=null;
 function toast(msg){const t=$('#toast');t.textContent=msg;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,2800)}
 function getName(){const v=($('#name')?.value||myName||'').trim().slice(0,20);if(!v){toast('Type your name first.');$('#name')?.focus();return null}myName=v;store('escoba.name',v);return v}
 
@@ -148,6 +158,12 @@ async function post(url,body){
   finally{busy=false}
 }
 const act=(type,extra={})=>post('/api/action',{type,...extra});
+// Steals and challenges: a wrong call changes nothing, so the reply is the same whatever was wrong.
+function quietAct(type,extra){
+  return fetch('/api/action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pid,code,type,...extra})}).then(r=>r.json())
+    .then(j=>{if(j.error)toast(j.error==='NOSTEAL'?'Nothing to steal there. Play goes on.':j.error==='NOCHALLENGE'?'No luck: nothing changes. Play goes on.':j.error)})
+    .catch(()=>toast('Could not reach the server. Try again.'));
+}
 
 async function createGame(){const name=getName();if(!name)return;const history=$('#history').value==='on',hints=$('#hints').value==='on';store('escoba.opts',JSON.stringify({history,hints}));const j=await post('/api/create',{name,target:+($('#target')?.value||15),history,hints});if(j)openGame(j.code)}
 function joinSeat(){const name=getName();if(name)act('join',{name})}
@@ -163,8 +179,9 @@ function openGame(c,quiet){
     if(s.gone){toast('The table was closed.');return leave()}
     game=s;store('escoba.game',c);
     if(s.rev!==lastRev){lastRev=s.rev;selHand=(s.hands?.[pid]||[]).includes(selHand)?selHand:null;for(const t of [...selTable])if(!s.table?.includes(t))selTable.delete(t);hint=null}
+    if(s.status!=='playing'&&s.status!=='lastcall')stealMode=false;
     if(shownRev===null)shownRev=s.last?.rev||0;
-    else if(s.last&&s.last.rev===s.rev&&s.last.rev!==shownRev){shownRev=s.last.rev;lastShow={...s.last,until:Date.now()+5000};clearTimeout(openGame.t);openGame.t=setTimeout(()=>{lastShow=null;if(view==='game')render()},5000)}
+    else if(s.last&&s.last.rev===s.rev&&s.last.rev!==shownRev){shownRev=s.last.rev;const ms=s.last.kind==='drop'?2500:s.last.kind==='challenge'?3500:5000;lastShow={...s.last,until:Date.now()+ms};clearTimeout(openGame.t);openGame.t=setTimeout(()=>{lastShow=null;if(view==='game')render()},ms)}
     if(lastFlash===null)lastFlash=s.flash?.at||0;
     else if(s.flash&&s.flash.at>lastFlash){lastFlash=s.flash.at;showFlash(nm(s,s.flash.pid))}
     if(view==='game')render();
@@ -185,7 +202,7 @@ async function pollLobby(){
 const half=n=>n===null||n===undefined?'—':(n%1?Math.floor(n)+'½':String(n));
 function cardHTML(c,o={}){
   const r=+c.slice(1);
-  return `<button class="card s-${c[0]}${o.sel?' sel':''}${o.hint?' hint':''}${o.fresh?' fresh':''}" ${o.act?`data-act="${o.act}" data-card="${c}"`:''} ${o.dis?'disabled':''} aria-label="${label(c)}, worth ${val(c)}" aria-pressed="${!!o.sel}"><span class="cr">${r}</span><span class="pip">${SVG[c[0]]}</span><span class="cn">${RNAME[r]||''}</span><span class="cv">${val(c)}</span></button>`;
+  return `<button class="card s-${c[0]}${o.sm?' sm':''}${o.sel?' sel':''}${o.hint?' hint':''}${o.fresh?' fresh':''}" ${o.act?`data-act="${o.act}" data-card="${c}"`:''} ${o.dis?'disabled':''} aria-label="${label(c)}, worth ${val(c)}" aria-pressed="${!!o.sel}"><span class="cr">${r}</span><span class="pip">${SVG[c[0]]}</span><span class="cn">${RNAME[r]||''}</span><span class="cv">${val(c)}</span></button>`;
 }
 function render(){view==='lobby'?renderLobby():renderGame()}
 
@@ -193,9 +210,12 @@ const RULES=`<details class="panel"><summary>How to play</summary><ul>
 <li>Spanish 40-card deck. Cards 1–7 count their number. Sota (10) counts 8, Caballo (11) counts 9, Rey (12) counts 10. The small number in each card's corner is its value.</li>
 <li>Everyone gets 3 cards and 4 go face up on the table. On your turn play one card: either capture table cards that add up to <b>15</b> together with your card, or lay it down.</li>
 <li>To capture: tap the table cards you want, then a card from your hand, then <b>Capture</b>. Clearing the whole table is an <b>escoba</b>, worth 1 point.</li>
+<li>The game does not check your sums. If you think a capture did not add up to 15, press <b>Challenge capture</b> before the next card is played. If you are right, the cards go back on the table and any escoba is cancelled. If you are wrong, nothing happens.</li>
 <li>When hands run out, 3 more are dealt until the deck is gone. With 5 players the last deal is 1 card each, and the spare card goes on the table. Cards left on the table go to whoever captured last.</li>
-<li>Mistakes cost you. If a player lays a card down when it could have made 15, any other player can tap that card plus the table cards that make 15 and press <b>¡Robar!</b> to take them. This works until the next card is played. Clearing the table this way counts as an escoba.</li>
-<li>After every move, the cards that were played and taken stay on show for a few seconds. If table talk is hidden, that is your only chance to see them, so pay attention.</li>
+<li>Mistakes cost you. If a player lays a card down when it could have made 15, any other player can press <b>¡Robar!</b>, tap that card plus the table cards that make 15, and press <b>Confirm steal</b> to take them. This works until the next card is played. A wrong guess changes nothing. Clearing the table this way counts as an escoba.</li>
+<li>If the first four cards on the table add up to 15 or 30, the first player to play takes them as 1 or 2 escobas.</li>
+<li>Captured cards stay on show below the table for 5 seconds. A card laid down is added to the right of the table and glows for a moment. Nobody sees how many cards anyone has taken. If table talk is hidden, that is your only chance to see them, so pay attention.</li>
+<li>When all the cards are played, there is one last chance to steal or challenge before anyone presses <b>Count the cards</b>.</li>
 <li>Each round scores 1 point each for: most cards, most oros, <b>las 70</b>, the 7 de oros, every escoba, and 1 extra for all ten oros. Ties score nothing.</li>
 <li><b>Las 70:</b> take your best card in each of the four suits and add them up. Sevens count 7, sixes 6, aces 5½, then 5, 4, 3, 2. Sota, Caballo and Rey (negras) count 0, but they still count as having that suit. If you don't have a card in all four suits, you can't win this point.</li>
 <li>First player to reach the target score wins. A tie at the top plays another round.</li></ul></details>`;
@@ -241,58 +261,66 @@ function renderGame(){
     return;
   }
   const me=s.order.includes(pid)?pid:null;
+  const live=s.status==='playing'||s.status==='lastcall';
   const myTurn=s.status==='playing'&&s.order[s.turnIdx]===me;
   const hand=me?(s.hands[me]||[]):[];
-  const tsum=[...selTable].reduce((a,c)=>a+val(c),0);
   const hintsOn=!s.opts||s.opts.hints, historyOn=!s.opts||s.opts.history;
-  const drop=s.status==='playing'?s.lastDrop:null;
-  const canStealNow=!!(me&&drop&&drop.by!==me);
-  const tableClickable=myTurn||canStealNow;
-  const canSteal=canStealNow&&!selHand&&selTable.has(drop.card)&&selTable.size>1&&tsum===15;
+  const tableClickable=myTurn||(stealMode&&!!me);
   const ls=lastShow&&lastShow.until>Date.now()?lastShow:null;
+  // Captures, steals and the opening sweep show below the table for 5 seconds; a laid-down card or cards put back are just outlined on the table.
   let just='';
-  if(ls&&s.status==='playing'){
+  if(ls&&live){
     const W=`<b>${esc(nm(s,ls.pid))}</b>`;
     if(ls.kind==='capture')just=`<div class="just"><div class="who">${W} played${ls.escoba?' and swept the table: <b>¡Escoba!</b>':' and took'}</div><div class="cards">${cardHTML(ls.card,{dis:true})}<span class="plus">+</span>${ls.take.map(c=>cardHTML(c,{dis:true})).join('')}</div></div>`;
-    else if(ls.kind==='drop')just=`<div class="just"><div class="who">${W} laid down</div><div class="cards">${cardHTML(ls.card,{dis:true})}</div></div>`;
+    else if(ls.kind==='opening')just=`<div class="just"><div class="who">The first four cards add up to ${ls.count*15}: ${W} gets <b>${ls.count} escoba${ls.count>1?'s':''}</b></div><div class="cards">${ls.take.map(c=>cardHTML(c,{dis:true})).join('')}</div></div>`;
     else if(ls.kind==='steal')just=`<div class="just steal"><div class="who">${W} stole from <b>${esc(nm(s,ls.from))}</b>${ls.escoba?' — <b>¡Escoba!</b>':''}</div><div class="cards">${ls.take.map(c=>cardHTML(c,{dis:true})).join('')}</div></div>`;
+    else if(ls.kind==='challenge')just=`<div class="just steal"><div class="who">${W} challenged <b>${esc(nm(s,ls.from))}</b>: that capture did not add up to 15. The cards go back on the table.</div></div>`;
   }
-  const total=(selHand?val(selHand):0)+tsum;
+  const freshSet=new Set(ls&&(ls.kind==='drop'?[ls.card]:ls.kind==='challenge'?ls.take:[]));
   const players=s.order.map((p,i)=>`<div class="pl${s.status==='playing'&&i===s.turnIdx?' turn':''}"><div class="nm"><span>${esc(nm(s,p))}${p===pid?' (you)':''}</span><span class="score">${s.scores[p]||0}</span></div>
-    <div class="meta"><span class="backs" aria-label="${(s.hands[p]||[]).length} cards in hand">${(s.hands[p]||[]).map(()=>'<span class="back"></span>').join('')}</span><span>${(s.captures[p]||[]).length} taken</span>${s.escobas[p]?`<span class="tag on">${s.escobas[p]} escoba${s.escobas[p]>1?'s':''}</span>`:''}${i===s.dealerIdx?'<span class="tag">deals</span>':''}</div></div>`).join('');
-  let prompt;
-  if(s.status!=='playing')prompt='';
+    <div class="meta"><span class="backs" aria-label="${(s.hands[p]||[]).length} cards in hand">${(s.hands[p]||[]).map(()=>'<span class="back"></span>').join('')}</span>${s.escobas[p]?`<span class="tag on">${s.escobas[p]} escoba${s.escobas[p]>1?'s':''}</span>`:''}${i===s.dealerIdx?'<span class="tag">deals</span>':''}</div></div>`).join('');
+  let prompt='';
+  if(s.status==='lastcall')prompt=stealMode?`<b>Stealing:</b> tap the cards to steal, then press Confirm steal.`:`<b>All cards are played.</b> Last chance to steal or challenge, then count the cards.`;
+  else if(s.status!=='playing')prompt='';
   else if(!me)prompt=`You are watching. It's <b>${esc(nm(s,s.order[s.turnIdx]))}</b>'s turn.`;
-  else if(!myTurn&&selTable.size)prompt=`<span class="meter ${tsum===15?'ok':tsum>15?'over':''}">${tsum} / 15</span>`;
+  else if(stealMode)prompt=`<b>Stealing:</b> tap the cards to steal, then press Confirm steal.`;
   else if(!myTurn)prompt=`Waiting for <b>${esc(nm(s,s.order[s.turnIdx]))}</b>…`;
-  else if(!selHand&&selTable.size)prompt=`<span class="meter ${tsum===15?'ok':tsum>15?'over':''}">${tsum} / 15</span>`;
-  else if(!selHand)prompt=`<b>Your turn.</b> Tap table cards to capture, then a card from your hand.`;
-  else prompt=`<span class="meter ${total===15?'ok':total>15?'over':''}">${total} / 15</span>`;
-  const canCap=myTurn&&selHand&&selTable.size&&total===15;
-  const canDrop=myTurn&&selHand&&!selTable.size;
+  else if(!selHand&&!selTable.size)prompt=`<b>Your turn.</b> Tap table cards to capture, then a card from your hand.`;
+  else prompt=`${selHand?'Your card':'No hand card yet'} + ${selTable.size} table card${selTable.size===1?'':'s'}`;
+  const canCap=!stealMode&&myTurn&&selHand&&selTable.size>0;
+  const canDrop=!stealMode&&myTurn&&selHand&&!selTable.size;
+  const canSteal=stealMode&&selTable.size>0;
+  const extraBtns=me?`<div class="actions">${stealMode?`<button class="btn steal" data-act="steal-go" ${canSteal?'':'disabled'}>Confirm steal</button><button class="btn ghost small" data-act="steal-cancel">Cancel</button>`:`<button class="btn steal" data-act="steal">¡Robar!</button>`}<button class="btn steal" data-act="challenge" title="Say the last capture did not add up to 15">Challenge capture</button>${hintsOn&&s.status==='playing'?`<button class="btn ghost small" data-act="hint" ${myTurn?'':'disabled'}>Hint</button>`:''}</div>`:'';
   let bottom;
   if(s.status==='playing'){
     bottom=`<section class="hand"><div class="eyebrow">${me?'Your hand':'Spectating'}</div>
-    <div class="cards">${me?hand.map(c=>cardHTML(c,{act:'hand',sel:c===selHand,hint:hint&&hint.hand===c,dis:!myTurn})).join('')||'<span class="note">No cards in hand.</span>':''}</div>
-    ${me?`<div class="actions"><button class="btn" data-act="capture" ${canCap?'':'disabled'}>Capture</button><button class="btn ghost" data-act="drop" ${canDrop?'':'disabled'}>Lay it down</button>${canStealNow?`<button class="btn steal" data-act="steal" ${canSteal?'':'disabled'} title="Tap the card ${esc(nm(s,drop.by))} just laid down plus table cards that make 15">¡Robar!</button>`:''}${hintsOn?`<button class="btn ghost small" data-act="hint" ${myTurn?'':'disabled'}>Hint</button>`:''}</div>
-    ${canStealNow?`<p class="note" style="text-align:center;margin:0">Did ${esc(nm(s,drop.by))} miss a 15? Tap their card and the table cards that make 15, then press ¡Robar!</p>`:''}`:''}</section>`;
+    <div class="cards">${me?hand.map(c=>cardHTML(c,{act:'hand',sel:c===selHand,hint:hint&&hint.hand===c,dis:!myTurn||stealMode})).join('')||'<span class="note">No cards in hand.</span>':''}</div>
+    ${me?`<div class="actions"><button class="btn" data-act="capture" ${canCap?'':'disabled'}>Capture</button><button class="btn ghost" data-act="drop" ${canDrop?'':'disabled'}>Lay it down</button></div>`:''}${extraBtns}</section>`;
+  }else if(s.status==='lastcall'){
+    bottom=`<section class="hand">${extraBtns}<div class="actions"><button class="btn" data-act="count" ${me?'':'disabled'}>Count the cards</button></div></section>`;
   }else{
     const rows=s.roundResult||[];
     const tick=b=>b?'<span class="win">✓</span>':'';
+    const SUITN={o:'Oros',c:'Copas',e:'Espadas',b:'Bastos'};
+    const p70=r=>`<div class="r70"><div class="r70h"><b>${esc(nm(s,r.pid))}</b><span class="v70">${r.setenta===null?'No points: missing a suit':half(r.setenta)} ${tick(r.w_setenta)}</span></div>
+      <div class="r70c">${'ocbe'.split('').map(su=>{const c=r.best70&&r.best70[su];return c?`<div class="c70">${cardHTML(c,{dis:true,sm:true})}<span>${half(window.Escoba.P70[+c.slice(1)]||0)}</span></div>`:`<div class="c70"><div class="miss">No ${SUITN[su]}</div><span>—</span></div>`}).join('')}</div></div>`;
     bottom=`<section class="panel" style="display:flex;flex-direction:column;gap:12px">
       <h2>${s.status==='gameover'?`${esc(nm(s,s.winner))} wins!`:`Round ${s.round} results`}</h2>
       <div class="scroll"><table class="res"><thead><tr><th>Player</th><th>Cards</th><th>Oros</th><th>Las 70</th><th>7 de oros</th><th>Escobas</th><th>Round</th><th>Total</th></tr></thead><tbody>
       ${rows.map(r=>`<tr><td>${esc(nm(s,r.pid))}</td><td>${r.cards} ${tick(r.w_cards)}</td><td>${r.oros} ${tick(r.w_oros)}</td><td>${half(r.setenta)} ${tick(r.w_setenta)}</td><td>${r.velo?'<span class="win">✓</span>':'–'}</td><td>${r.escobas}</td><td class="win">+${r.pts}</td><td>${s.scores[r.pid]}</td></tr>`).join('')}
       </tbody></table></div>
-      <p class="note">✓ marks who won each point. Las 70 shows — when a player is missing a suit. Playing to ${s.target}.</p>
+      <p class="note">✓ marks who won each point. Playing to ${s.target}.</p>
+      <h3>Las 70</h3>
+      <p class="note" style="margin:0">Each player's best card in every suit. 7 = 7, 6 = 6, As = 5½, then 5 to 2. Sota, Caballo and Rey count 0.</p>
+      <div class="l70">${rows.map(p70).join('')}</div>
       <div class="row">${s.status==='gameover'?`<button class="btn" data-act="rematch" ${me?'':'disabled'}>Play again, same table</button>`:`<button class="btn" data-act="next" ${me?'':'disabled'}>Deal next round</button>`}</div>
     </section>`;
   }
   app.innerHTML=`<div class="topbar"><div><div class="eyebrow">Table <span class="code">${esc(s.code)}</span> · Round ${s.round} · to ${s.target}</div><h2>Escoba de 15</h2></div><div class="row"><span class="note">${s.deckCount||0} cards in deck</span>${back}</div></div>
   <div class="players">${players}</div>
-  <section class="felt">${just}<div class="eyebrow">Table</div>
-    <div class="cards">${(s.table||[]).map(c=>cardHTML(c,{act:'table',sel:selTable.has(c),hint:hint&&hint.take.includes(c),fresh:ls&&ls.kind==='drop'&&ls.card===c,dis:!tableClickable})).join('')||'<span class="note">The table is empty.</span>'}</div>
-    <div class="prompt">${prompt}</div></section>
+  <section class="felt"><div class="eyebrow">Table</div>
+    <div class="cards">${(s.table||[]).map(c=>cardHTML(c,{act:'table',sel:selTable.has(c),hint:hint&&hint.take.includes(c),fresh:freshSet.has(c),dis:!tableClickable})).join('')||'<span class="note">The table is empty.</span>'}</div>
+    <div class="prompt">${prompt}</div>${live?`<div class="justslot">${just}</div>`:''}</section>
   ${bottom}
   <section class="panel"><div class="row" style="justify-content:space-between"><h3>Table talk</h3>${s.host===pid?'<button class="btn small ghost" data-act="end">Close table</button>':''}</div>${historyOn?`<ul class="log">${(s.log||[]).map(l=>`<li>${esc(l)}</li>`).join('')}</ul>`:'<p class="hiddenlog">Table talk is hidden at this table. Keep track of what everyone takes yourself.</p>'}</section>`;
 }
@@ -311,7 +339,11 @@ app.addEventListener('click',e=>{
     case 'hand':selHand=selHand===c?null:c;hint=null;return render();
     case 'table':selTable.has(c)?selTable.delete(c):selTable.add(c);hint=null;return render();
     case 'capture':return act('play',{card:selHand,take:[...selTable]});
-    case 'steal':return act('steal',{take:[...selTable]});
+    case 'steal':stealMode=true;selHand=null;selTable.clear();hint=null;return render();
+    case 'steal-cancel':stealMode=false;selTable.clear();return render();
+    case 'steal-go':{const take=[...selTable];stealMode=false;selTable.clear();render();return quietAct('steal',{take})}
+    case 'challenge':return quietAct('challenge',{});
+    case 'count':return act('count');
     case 'drop':return act('play',{card:selHand,take:[]});
     case 'hint':{hint=findCapture(game.hands[pid]||[],game.table||[]);if(!hint)toast('No capture adds to 15. Lay a card down.');else{selHand=hint.hand;selTable=new Set(hint.take)}return render()}
     case 'next':return act('next');

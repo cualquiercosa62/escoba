@@ -27,6 +27,9 @@ const cleanId = p => /^[a-z0-9]{6,40}$/i.test(String(p || '')) ? String(p) : nul
 function viewFor(s, pid) {
   const v = { ...s, deck: undefined, deckCount: (s.deck || []).length, hands: {} };
   if (s.opts && !s.opts.history) v.log = [];
+  // Keep secrets off the wire: taken piles and whether the last capture really made 15.
+  v.captures = undefined;
+  if (s.lastCapture) v.lastCapture = { by: s.lastCapture.by };
   for (const p of s.order || []) {
     const h = (s.hands && s.hands[p]) || [];
     v.hands[p] = p === pid ? h : h.map(() => 'x');
@@ -69,6 +72,8 @@ function apply(s, pid, a) {
       s.dealerIdx = s.order.length - 1; s.round = 0; s.log = [];
       E.newRound(s); return null;
     }
+    case 'challenge': return E.challenge(s, pid);
+    case 'count': return E.countCards(s, pid);
     case 'steal': {
       const take = Array.isArray(a.take) ? a.take.map(String) : [];
       return E.steal(s, pid, take);
