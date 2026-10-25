@@ -3,7 +3,7 @@
 const SUITS={o:'Oros',c:'Copas',e:'Espadas',b:'Bastos'};
 const RNAME={1:'As',10:'Sota',11:'Caballo',12:'Rey'};
 const val=c=>{const r=+c.slice(1);return r<=7?r:r-2};
-// Points for "las 70": best card of each suit. Sota, Caballo and Rey (negras) are worth 0.
+// Points for "los 70": best card of each suit. Sota, Caballo and Rey (negras) are worth 0.
 const P70={1:5.5,2:2,3:3,4:4,5:5,6:6,7:7};
 // The card that counts for each suit (null when the suit is missing).
 function best70(cs){const r={};for(const su of 'ocbe'){const x=cs.filter(c=>c[0]===su).sort((a,b)=>(P70[+b.slice(1)]||0)-(P70[+a.slice(1)]||0));r[su]=x[0]||null}return r}

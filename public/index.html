@@ -111,11 +111,11 @@ details ul{margin:10px 0 0;padding-left:20px;display:flex;flex-direction:column;
 .ghostgrp.gap{margin-left:28px}
 @media (max-width:520px){.ghostgrp.gap{margin-left:18px}}
 .card.sm{width:54px;height:81px;border-radius:7px}.card.sm .pip{width:30px;height:30px}.card.sm .cr{font-size:1rem;top:4px;left:5px}.card.sm .cn,.card.sm .cv{display:none}
-.l70{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:10px}
+.l70{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:10px}
 .r70{padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.04);display:flex;flex-direction:column;gap:8px}
 .r70h{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
 .v70{font-family:var(--display);font-weight:800;color:var(--gold);font-variant-numeric:tabular-nums}
-.r70c{display:flex;gap:8px;flex-wrap:wrap}
+.r70c{display:grid;grid-template-columns:repeat(2,max-content);gap:8px 10px;justify-content:center}
 .c70{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:.85rem;color:var(--ink-dim);font-variant-numeric:tabular-nums}
 .miss{width:54px;height:81px;border-radius:7px;border:1.5px dashed var(--felt-line);display:flex;align-items:center;justify-content:center;text-align:center;font-size:.7rem;padding:4px;color:var(--ink-dim)}
 @keyframes fadeout{0%{opacity:0;transform:translateY(-6px)}8%{opacity:1;transform:none}80%{opacity:1}100%{opacity:0}}
@@ -215,8 +215,8 @@ const RULES=`<details class="panel"><summary>How to play</summary><ul>
 <li>If the first four cards on the table add up to 15 or 30, the first player to play takes them as 1 or 2 escobas.</li>
 <li>When someone captures, their card and the cards they took move to the end of the table row and stay highlighted for 5 seconds. A card laid down is added to the right of the table and glows for a moment. Nobody sees how many cards anyone has taken. If table talk is hidden, that is your only chance to see them, so pay attention.</li>
 <li>When all the cards are played, there is one last chance to steal or challenge before anyone presses <b>Count the cards</b>.</li>
-<li>Each round scores 1 point each for: most cards, most oros, <b>las 70</b>, the 7 de oros, every escoba, and 1 extra for all ten oros. Ties score nothing.</li>
-<li><b>Las 70:</b> take your best card in each of the four suits and add them up. Sevens count 7, sixes 6, aces 5½, then 5, 4, 3, 2. Sota, Caballo and Rey (negras) count 0, but they still count as having that suit. If you don't have a card in all four suits, you can't win this point.</li>
+<li>Each round scores 1 point each for: most cards, most oros, <b>los 70</b>, the 7 de oros, every escoba, and 1 extra for all ten oros. Ties score nothing.</li>
+<li><b>Los 70:</b> take your best card in each of the four suits and add them up. Sevens count 7, sixes 6, aces 5½, then 5, 4, 3, 2. Sota, Caballo and Rey (negras) count 0, but they still count as having that suit. If you don't have a card in all four suits, you can't win this point.</li>
 <li>First player to reach the target score wins. A tie at the top plays another round.</li></ul></details>`;
 
 function renderLobby(){
@@ -301,15 +301,15 @@ function renderGame(){
     const rows=s.roundResult||[];
     const tick=b=>b?'<span class="win">✓</span>':'';
     const SUITN={o:'Oros',c:'Copas',e:'Espadas',b:'Bastos'};
-    const p70=r=>`<div class="r70"><div class="r70h"><b>${esc(nm(s,r.pid))}</b><span class="v70">${r.setenta===null?'No points: missing a suit':half(r.setenta)} ${tick(r.w_setenta)}</span></div>
+    const p70=r=>`<div class="r70"><div class="r70h"><b>${esc(nm(s,r.pid))}</b><span class="v70">${r.setenta===null?'No points':half(r.setenta)} ${tick(r.w_setenta)}</span></div>
       <div class="r70c">${'ocbe'.split('').map(su=>{const c=r.best70&&r.best70[su];return c?`<div class="c70">${cardHTML(c,{dis:true,sm:true})}<span>${half(window.Escoba.P70[+c.slice(1)]||0)}</span></div>`:`<div class="c70"><div class="miss">No ${SUITN[su]}</div><span>—</span></div>`}).join('')}</div></div>`;
     bottom=`<section class="panel" style="display:flex;flex-direction:column;gap:12px">
       <h2>${s.status==='gameover'?`${esc(nm(s,s.winner))} wins!`:`Round ${s.round} results`}</h2>
-      <div class="scroll"><table class="res"><thead><tr><th>Player</th><th>Cards</th><th>Oros</th><th>Las 70</th><th>7 de oros</th><th>Escobas</th><th>Round</th><th>Total</th></tr></thead><tbody>
+      <div class="scroll"><table class="res"><thead><tr><th>Player</th><th>Cards</th><th>Oros</th><th>Los 70</th><th>7 de oros</th><th>Escobas</th><th>Round</th><th>Total</th></tr></thead><tbody>
       ${rows.map(r=>`<tr><td>${esc(nm(s,r.pid))}</td><td>${r.cards} ${tick(r.w_cards)}</td><td>${r.oros} ${tick(r.w_oros)}</td><td>${half(r.setenta)} ${tick(r.w_setenta)}</td><td>${r.velo?'<span class="win">✓</span>':'–'}</td><td>${r.escobas}</td><td class="win">+${r.pts}</td><td>${s.scores[r.pid]}</td></tr>`).join('')}
       </tbody></table></div>
       <p class="note">✓ marks who won each point. Playing to ${s.target}.</p>
-      <h3>Las 70</h3>
+      <h3>Los 70</h3>
       <p class="note" style="margin:0">Each player's best card in every suit. 7 = 7, 6 = 6, As = 5½, then 5 to 2. Sota, Caballo and Rey count 0.</p>
       <div class="l70">${rows.map(p70).join('')}</div>
       <div class="row">${s.status==='gameover'?`<button class="btn" data-act="rematch" ${me?'':'disabled'}>Play again, same table</button>`:`<button class="btn" data-act="next" ${me?'':'disabled'}>Deal next round</button>`}</div>
