@@ -18,7 +18,7 @@ function newRound(s){
   s.deck=fullDeck();s.table=s.deck.splice(0,4);s.hands={};s.captures={};s.escobas={};
   s.order.forEach(p=>{s.captures[p]=[];s.escobas[p]=0});
   dealHands(s);
-  s.lastCapturer=null;s.lastDrop=null;s.lastCapture=null;s.last=null;s.turnIdx=(s.dealerIdx+1)%n;s.round=(s.round||0)+1;s.status='playing';s.roundResult=null;
+  s.lastCapturer=null;s.lastDrop=null;s.lastCapture=null;s.mistakes=[];s.revealed=null;s.last=null;s.turnIdx=(s.dealerIdx+1)%n;s.round=(s.round||0)+1;s.status='playing';s.roundResult=null;
   const dealer=s.order[s.dealerIdx],first=s.order[s.turnIdx];
   addLog(s,`Round ${s.round}: ${nm(s,dealer)} deals.`);
   const sum=s.table.reduce((a,c)=>a+val(c),0);
@@ -36,6 +36,9 @@ function scoreRound(s){
   award('cards');award('oros');
   {const ok=rows.filter(r=>r.setenta!==null);if(ok.length){const m=Math.max(...ok.map(r=>r.setenta));const top=ok.filter(r=>r.setenta===m);if(top.length===1){top[0].pts++;top[0].w_setenta=true}}}
   rows.forEach(r=>{if(r.velo)r.pts++;r.pts+=r.escobas;if(r.oros===10)r.pts++});
+  // Wrong captures nobody challenged cost points once the cards are counted.
+  const pen=(s.opts&&s.opts.penalty)||0;
+  rows.forEach(r=>{r.mistakes=(s.mistakes||[]).filter(m=>m.by===r.pid).length;r.penalty=r.mistakes*pen;r.pts-=r.penalty});
   return rows;
 }
 function endRound(s){
@@ -45,7 +48,7 @@ function endRound(s){
     s.captures[p].push(...s.table);addLog(s,`${nm(s,p)} picks up the last ${s.table.length} card${s.table.length>1?'s':''} on the table.`);s.table=[];
   }
   const rows=scoreRound(s);rows.forEach(r=>s.scores[r.pid]=(s.scores[r.pid]||0)+r.pts);
-  s.roundResult=rows;
+  s.roundResult=rows;s.revealed=(s.mistakes||[]).map(m=>({by:m.by,card:m.card,take:m.take}));
   const tot=s.order.map(p=>s.scores[p]);const m=Math.max(...tot);
   if(m>=s.target&&tot.filter(x=>x===m).length===1){s.status='gameover';s.winner=s.order[tot.indexOf(m)];addLog(s,`${nm(s,s.winner)} wins the game with ${m} points!`)}
   else{s.status='roundover';addLog(s,`Round ${s.round} scored.`)}
@@ -58,6 +61,7 @@ function play(s,p,card,take){
   hand.splice(hi,1);let esc=false;s.lastDrop=null;s.lastCapture=null;
   if(take.length){
     s.lastCapture={by:p,card,take,ok:val(card)+take.reduce((a,c)=>a+val(c),0)===15,prev:s.lastCapturer};
+    if(!s.lastCapture.ok){s.mistakes=s.mistakes||[];s.mistakes.push({by:p,card,take})}
     s.table=s.table.filter(c=>!take.includes(c));s.captures[p].push(card,...take);s.lastCapturer=p;
     let msg=`${nm(s,p)} played the ${label(card)} and took ${take.map(label).join(', ')}.`;
     if(!s.table.length){esc=true;s.escobas[p]++;msg+=' Escoba!';s.flash={pid:p,at:Date.now()}}
@@ -83,6 +87,7 @@ function challenge(s,p){
   s.table.push(...back);
   if(c.escoba)s.escobas[c.by]=Math.max(0,s.escobas[c.by]-1);
   s.lastCapturer=c.prev;s.lastCapture=null;
+  if(s.mistakes)s.mistakes.pop(); // the caught mistake is always the latest one
   addLog(s,`${nm(s,p)} challenged ${nm(s,c.by)}: those cards did not add up to 15. They go back on the table.`);
   s.last={kind:'challenge',pid:p,from:c.by,card:null,take:back,escoba:false};
   return null;

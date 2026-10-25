@@ -107,6 +107,8 @@ details ul{margin:10px 0 0;padding-left:20px;display:flex;flex-direction:column;
 .card.going{box-shadow:0 0 0 3px var(--gold),0 0 16px rgba(225,185,90,.55);opacity:1;cursor:default}
 .card.going.stolen{box-shadow:0 0 0 3px var(--danger),0 0 16px rgba(224,128,107,.55)}
 .prompt.notice{font-size:1rem}
+.bad{color:var(--danger);font-weight:700}
+.r70c.wrongc{display:flex;flex-wrap:wrap;justify-content:flex-start}
 .ghostgrp{display:flex;flex-wrap:wrap;gap:inherit;justify-content:center}
 .ghostgrp.gap{margin-left:28px}
 @media (max-width:520px){.ghostgrp.gap{margin-left:18px}}
@@ -164,7 +166,7 @@ function quietAct(type,extra){
     .catch(()=>toast('Could not reach the server. Try again.'));
 }
 
-async function createGame(){const name=getName();if(!name)return;const history=$('#history').value==='on',hints=$('#hints').value==='on';store('escoba.opts',JSON.stringify({history,hints}));const j=await post('/api/create',{name,target:+($('#target')?.value||15),history,hints});if(j)openGame(j.code)}
+async function createGame(){const name=getName();if(!name)return;const history=$('#history').value==='on',hints=$('#hints').value==='on',penalty=+$('#penalty').value;store('escoba.opts',JSON.stringify({history,hints,penalty}));const j=await post('/api/create',{name,target:+($('#target')?.value||15),history,hints,penalty});if(j)openGame(j.code)}
 function joinSeat(){const name=getName();if(name)act('join',{name})}
 
 function openGame(c,quiet){
@@ -214,6 +216,7 @@ const RULES=`<details class="panel"><summary>How to play</summary><ul>
 <li>Mistakes cost you. If a player lays a card down when it could have made 15, any other player can press <b>¡Robar!</b>, tap that card plus the table cards that make 15, and press <b>Confirm steal</b> to take them. This works until the next card is played. A wrong guess changes nothing. Clearing the table this way counts as an escoba.</li>
 <li>If the first four cards on the table add up to 15 or 30, the first player to play takes them as 1 or 2 escobas.</li>
 <li>When someone captures, their card and the cards they took move to the end of the table row and stay highlighted for 5 seconds. A card laid down is added to the right of the table and glows for a moment. Nobody sees how many cards anyone has taken. If table talk is hidden, that is your only chance to see them, so pay attention.</li>
+<li>Wrong captures that nobody challenged are revealed when the round is counted, and each one costs the points chosen for the table.</li>
 <li>When all the cards are played, there is one last chance to steal or challenge before anyone presses <b>Count the cards</b>.</li>
 <li>Each round scores 1 point each for: most cards, most oros, <b>los 70</b>, the 7 de oros, every escoba, and 1 extra for all ten oros. Ties score nothing.</li>
 <li><b>Los 70:</b> take your best card in each of the four suits and add them up. Sevens count 7, sixes 6, aces 5½, then 5, 4, 3, 2. Sota, Caballo and Rey (negras) count 0, but they still count as having that suit. If you don't have a card in all four suits, you can't win this point.</li>
@@ -233,6 +236,7 @@ function renderLobby(){
       <label for="name">Your name<input id="name" maxlength="20" autocomplete="nickname" value="${esc(myName)}" placeholder="e.g. Sil"></label>
       <label for="target">Play to<select id="target"><option value="15" selected>15 points</option><option value="21">21 points</option><option value="31">31 points</option></select></label>
       <label for="history">Table talk (history of moves)<select id="history"><option value="off" ${savedOpts.history?'':'selected'}>Hidden: players must remember</option><option value="on" ${savedOpts.history?'selected':''}>Shown</option></select></label>
+      <label for="penalty">Wrong capture nobody caught costs<select id="penalty">${[0,1,2,3].map(n=>`<option value="${n}" ${(savedOpts.penalty??1)===n?'selected':''}>${n?n+' point'+(n>1?'s':''):'Nothing'}</option>`).join('')}</select></label>
       <label for="hints">Hint button<select id="hints"><option value="off" ${savedOpts.hints?'':'selected'}>Off</option><option value="on" ${savedOpts.hints?'selected':''}>On</option></select></label>
       <div class="row"><button class="btn" data-act="create">Create table</button></div>
       <hr style="border:0;border-top:1px solid var(--felt-line);width:100%;margin:2px 0">
@@ -252,7 +256,7 @@ function renderGame(){
     app.innerHTML=`<div class="topbar"><div><div class="eyebrow">Table code</div><div class="code bigcode">${esc(s.code)}</div></div>${back}</div>
     <section class="panel" style="display:flex;flex-direction:column;gap:12px">
       <h2>Waiting for players</h2>
-      <p class="note">Friends open this website and enter the code <b class="code">${esc(s.code)}</b>, or pick it from Open tables. Playing to ${s.target}. Table talk ${s.opts&&!s.opts.history?'hidden':'shown'}, hints ${s.opts&&!s.opts.hints?'off':'on'}.</p>
+      <p class="note">Friends open this website and enter the code <b class="code">${esc(s.code)}</b>, or pick it from Open tables. Playing to ${s.target}. Table talk ${s.opts&&!s.opts.history?'hidden':'shown'}, hints ${s.opts&&!s.opts.hints?'off':'on'}. An uncaught wrong capture costs ${s.opts&&s.opts.penalty!==undefined?s.opts.penalty:0} point${s.opts&&s.opts.penalty===1?'':'s'}.</p>
       <ul class="list">${ps.map(([p,v],i)=>`<li><span>${esc(v.name)}${p===pid?' <span class="note">(you)</span>':''}</span><span class="tag${p===s.host?' on':''}">${p===s.host?'host':'seat '+(i+1)}</span></li>`).join('')}</ul>
       ${!seated?`<div class="row"><label for="name">Your name<input id="name" maxlength="20" value="${esc(myName)}" placeholder="Your name"></label><button class="btn" data-act="join" ${ps.length>=6?'disabled':''}>Take a seat</button></div>`:''}
       <div class="row">${host?`<button class="btn" data-act="start" ${ps.length<2?'disabled':''}>Deal the cards</button><span class="note">${ps.length<2?'Needs at least 2 players.':ps.length+' players ready.'}</span>`:(seated?`<span class="note">Waiting for ${esc(nm(s,s.host))} to deal.</span><button class="btn small ghost" data-act="unseat">Give up seat</button>`:'')}</div>
@@ -305,10 +309,11 @@ function renderGame(){
       <div class="r70c">${'ocbe'.split('').map(su=>{const c=r.best70&&r.best70[su];return c?`<div class="c70">${cardHTML(c,{dis:true,sm:true})}<span>${half(window.Escoba.P70[+c.slice(1)]||0)}</span></div>`:`<div class="c70"><div class="miss">No ${SUITN[su]}</div><span>—</span></div>`}).join('')}</div></div>`;
     bottom=`<section class="panel" style="display:flex;flex-direction:column;gap:12px">
       <h2>${s.status==='gameover'?`${esc(nm(s,s.winner))} wins!`:`Round ${s.round} results`}</h2>
-      <div class="scroll"><table class="res"><thead><tr><th>Player</th><th>Cards</th><th>Oros</th><th>Los 70</th><th>7 de oros</th><th>Escobas</th><th>Round</th><th>Total</th></tr></thead><tbody>
-      ${rows.map(r=>`<tr><td>${esc(nm(s,r.pid))}</td><td>${r.cards} ${tick(r.w_cards)}</td><td>${r.oros} ${tick(r.w_oros)}</td><td>${half(r.setenta)} ${tick(r.w_setenta)}</td><td>${r.velo?'<span class="win">✓</span>':'–'}</td><td>${r.escobas}</td><td class="win">+${r.pts}</td><td>${s.scores[r.pid]}</td></tr>`).join('')}
+      <div class="scroll"><table class="res"><thead><tr><th>Player</th><th>Cards</th><th>Oros</th><th>Los 70</th><th>7 de oros</th><th>Escobas</th><th>Mistakes</th><th>Round</th><th>Total</th></tr></thead><tbody>
+      ${rows.map(r=>`<tr><td>${esc(nm(s,r.pid))}</td><td>${r.cards} ${tick(r.w_cards)}</td><td>${r.oros} ${tick(r.w_oros)}</td><td>${half(r.setenta)} ${tick(r.w_setenta)}</td><td>${r.velo?'<span class="win">✓</span>':'–'}</td><td>${r.escobas}</td><td>${r.penalty?`<span class="bad">−${r.penalty}</span>`:'–'}</td><td class="win">${r.pts>=0?'+':'−'}${Math.abs(r.pts)}</td><td>${s.scores[r.pid]}</td></tr>`).join('')}
       </tbody></table></div>
       <p class="note">✓ marks who won each point. Playing to ${s.target}.</p>
+      ${(s.revealed||[]).length?`<h3>Wrong captures nobody caught</h3><div class="l70">${s.revealed.map(m=>`<div class="r70"><div class="r70h"><b>${esc(nm(s,m.by))}</b><span class="bad">${[m.card,...m.take].reduce((a,c)=>a+val(c),0)} ≠ 15</span></div><div class="r70c wrongc">${[m.card,...m.take].map(c=>cardHTML(c,{dis:true,sm:true})).join('')}</div></div>`).join('')}</div>`:''}
       <h3>Los 70</h3>
       <p class="note" style="margin:0">Each player's best card in every suit. 7 = 7, 6 = 6, As = 5½, then 5 to 2. Sota, Caballo and Rey count 0.</p>
       <div class="l70">${rows.map(p70).join('')}</div>

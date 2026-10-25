@@ -28,7 +28,7 @@ function viewFor(s, pid) {
   const v = { ...s, deck: undefined, deckCount: (s.deck || []).length, hands: {} };
   if (s.opts && !s.opts.history) v.log = [];
   // Keep secrets off the wire: taken piles and whether the last capture really made 15.
-  v.captures = undefined;
+  v.captures = undefined; v.mistakes = undefined;
   if (s.lastCapture) v.lastCapture = { by: s.lastCapture.by };
   for (const p of s.order || []) {
     const h = (s.hands && s.hands[p]) || [];
@@ -142,7 +142,7 @@ const server = http.createServer(async (req, res) => {
     if (!pid || !name) return json(res, 400, { error: 'Type your name first.' });
     const code = newCode(), now = Date.now();
     const target = [15, 21, 31].includes(+b.target) ? +b.target : 15;
-    const opts = { history: !!b.history, hints: !!b.hints };
+    const opts = { history: !!b.history, hints: !!b.hints, penalty: [0, 1, 2, 3].includes(+b.penalty) ? +b.penalty : 1 };
     games.set(code, { code, host: pid, status: 'lobby', target, opts, createdAt: now, updatedAt: now, players: { [pid]: { name, joinedAt: now } }, rev: 0 });
     return json(res, 200, { code });
   }
