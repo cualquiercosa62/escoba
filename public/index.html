@@ -100,11 +100,13 @@ details ul{margin:10px 0 0;padding-left:20px;display:flex;flex-direction:column;
 .flash div{font-family:var(--display);font-weight:800;font-size:clamp(3rem,14vw,7rem);color:var(--gold);text-shadow:0 4px 0 #6b4d0c,0 10px 40px rgba(0,0,0,.6);animation:pop 1.8s ease forwards;text-align:center;line-height:1}
 .flash small{display:block;font-size:1.4rem;color:var(--ink);text-shadow:0 2px 8px rgba(0,0,0,.6)}
 @keyframes pop{0%{transform:scale(.4) rotate(-8deg);opacity:0}15%{transform:scale(1.08) rotate(2deg);opacity:1}70%{transform:scale(1);opacity:1}100%{transform:scale(1);opacity:0}}
-@media (prefers-reduced-motion:reduce){.card,.flash div,.just{transition:none;animation:none}}
-@media (max-width:520px){.justslot{min-height:180px}.card .cn{display:none}.card{width:76px;height:114px}.card .pip{width:42px;height:42px}.card .cr{font-size:1.3rem}.cards{gap:8px;min-height:118px}}
+@media (prefers-reduced-motion:reduce){.card,.flash div{transition:none;animation:none}}
+@media (max-width:520px){.card .cn{display:none}.card{width:76px;height:114px}.card .pip{width:42px;height:42px}.card .cr{font-size:1.3rem}.cards{gap:8px;min-height:118px}}
 .card.fresh{box-shadow:0 0 0 3px #8fd3b4,0 6px 14px rgba(0,0,0,.25);animation:glow 2.5s ease forwards}
 @keyframes glow{0%,70%{box-shadow:0 0 0 4px #8fd3b4,0 0 18px #8fd3b4}100%{box-shadow:0 2px 0 rgba(0,0,0,.25),0 6px 14px rgba(0,0,0,.25)}}
-.justslot{width:100%;min-height:214px;display:flex;align-items:flex-start;justify-content:center}
+.card.going{box-shadow:0 0 0 3px var(--gold),0 0 16px rgba(225,185,90,.55);opacity:1;cursor:default}
+.card.going.stolen{box-shadow:0 0 0 3px var(--danger),0 0 16px rgba(224,128,107,.55)}
+.prompt.notice{font-size:1rem}
 .card.sm{width:54px;height:81px;border-radius:7px}.card.sm .pip{width:30px;height:30px}.card.sm .cr{font-size:1rem;top:4px;left:5px}.card.sm .cn,.card.sm .cv{display:none}
 .l70{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:10px}
 .r70{padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.04);display:flex;flex-direction:column;gap:8px}
@@ -113,12 +115,6 @@ details ul{margin:10px 0 0;padding-left:20px;display:flex;flex-direction:column;
 .r70c{display:flex;gap:8px;flex-wrap:wrap}
 .c70{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:.85rem;color:var(--ink-dim);font-variant-numeric:tabular-nums}
 .miss{width:54px;height:81px;border-radius:7px;border:1.5px dashed var(--felt-line);display:flex;align-items:center;justify-content:center;text-align:center;font-size:.7rem;padding:4px;color:var(--ink-dim)}
-.just{width:100%;display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px;border-radius:16px;background:rgba(0,0,0,.28);border:1px solid var(--gold-deep);animation:fadeout 5s ease forwards}
-.just .who{font-size:1.05rem}
-.just .who b{color:var(--gold)}
-.just .cards{min-height:0}
-.just .plus{font-family:var(--display);font-size:1.6rem;color:var(--ink-dim);align-self:center}
-.just.steal{border-color:var(--danger)}
 @keyframes fadeout{0%{opacity:0;transform:translateY(-6px)}8%{opacity:1;transform:none}80%{opacity:1}100%{opacity:0}}
 .btn.steal{background:var(--danger);border-color:var(--danger);color:#2a0d05}
 .btn.steal:hover:not(:disabled){background:#eb9a87}
@@ -202,7 +198,7 @@ async function pollLobby(){
 const half=n=>n===null||n===undefined?'—':(n%1?Math.floor(n)+'½':String(n));
 function cardHTML(c,o={}){
   const r=+c.slice(1);
-  return `<button class="card s-${c[0]}${o.sm?' sm':''}${o.sel?' sel':''}${o.hint?' hint':''}${o.fresh?' fresh':''}" ${o.act?`data-act="${o.act}" data-card="${c}"`:''} ${o.dis?'disabled':''} aria-label="${label(c)}, worth ${val(c)}" aria-pressed="${!!o.sel}"><span class="cr">${r}</span><span class="pip">${SVG[c[0]]}</span><span class="cn">${RNAME[r]||''}</span><span class="cv">${val(c)}</span></button>`;
+  return `<button class="card s-${c[0]}${o.cls?' '+o.cls:''}${o.sm?' sm':''}${o.sel?' sel':''}${o.hint?' hint':''}${o.fresh?' fresh':''}" ${o.act?`data-act="${o.act}" data-card="${c}"`:''} ${o.dis?'disabled':''} aria-label="${label(c)}, worth ${val(c)}" aria-pressed="${!!o.sel}"><span class="cr">${r}</span><span class="pip">${SVG[c[0]]}</span><span class="cn">${RNAME[r]||''}</span><span class="cv">${val(c)}</span></button>`;
 }
 function render(){view==='lobby'?renderLobby():renderGame()}
 
@@ -214,7 +210,7 @@ const RULES=`<details class="panel"><summary>How to play</summary><ul>
 <li>When hands run out, 3 more are dealt until the deck is gone. With 5 players the last deal is 1 card each, and the spare card goes on the table. Cards left on the table go to whoever captured last.</li>
 <li>Mistakes cost you. If a player lays a card down when it could have made 15, any other player can press <b>¡Robar!</b>, tap that card plus the table cards that make 15, and press <b>Confirm steal</b> to take them. This works until the next card is played. A wrong guess changes nothing. Clearing the table this way counts as an escoba.</li>
 <li>If the first four cards on the table add up to 15 or 30, the first player to play takes them as 1 or 2 escobas.</li>
-<li>Captured cards stay on show below the table for 5 seconds. A card laid down is added to the right of the table and glows for a moment. Nobody sees how many cards anyone has taken. If table talk is hidden, that is your only chance to see them, so pay attention.</li>
+<li>When someone captures, their card and the cards they took move to the end of the table row and stay highlighted for 5 seconds. A card laid down is added to the right of the table and glows for a moment. Nobody sees how many cards anyone has taken. If table talk is hidden, that is your only chance to see them, so pay attention.</li>
 <li>When all the cards are played, there is one last chance to steal or challenge before anyone presses <b>Count the cards</b>.</li>
 <li>Each round scores 1 point each for: most cards, most oros, <b>las 70</b>, the 7 de oros, every escoba, and 1 extra for all ten oros. Ties score nothing.</li>
 <li><b>Las 70:</b> take your best card in each of the four suits and add them up. Sevens count 7, sixes 6, aces 5½, then 5, 4, 3, 2. Sota, Caballo and Rey (negras) count 0, but they still count as having that suit. If you don't have a card in all four suits, you can't win this point.</li>
@@ -267,14 +263,14 @@ function renderGame(){
   const hintsOn=!s.opts||s.opts.hints, historyOn=!s.opts||s.opts.history;
   const tableClickable=myTurn||(stealMode&&!!me);
   const ls=lastShow&&lastShow.until>Date.now()?lastShow:null;
-  // Captures, steals and the opening sweep show below the table for 5 seconds; a laid-down card or cards put back are just outlined on the table.
-  let just='';
+  // Captured cards slide to the end of the table row, highlighted, for 5 seconds. A laid-down card or cards put back just glow.
+  let notice='',ghosts=[],ghostCls='going';
   if(ls&&live){
     const W=`<b>${esc(nm(s,ls.pid))}</b>`;
-    if(ls.kind==='capture')just=`<div class="just"><div class="who">${W} played${ls.escoba?' and swept the table: <b>¡Escoba!</b>':' and took'}</div><div class="cards">${cardHTML(ls.card,{dis:true})}<span class="plus">+</span>${ls.take.map(c=>cardHTML(c,{dis:true})).join('')}</div></div>`;
-    else if(ls.kind==='opening')just=`<div class="just"><div class="who">The first four cards add up to ${ls.count*15}: ${W} gets <b>${ls.count} escoba${ls.count>1?'s':''}</b></div><div class="cards">${ls.take.map(c=>cardHTML(c,{dis:true})).join('')}</div></div>`;
-    else if(ls.kind==='steal')just=`<div class="just steal"><div class="who">${W} stole from <b>${esc(nm(s,ls.from))}</b>${ls.escoba?' — <b>¡Escoba!</b>':''}</div><div class="cards">${ls.take.map(c=>cardHTML(c,{dis:true})).join('')}</div></div>`;
-    else if(ls.kind==='challenge')just=`<div class="just steal"><div class="who">${W} challenged <b>${esc(nm(s,ls.from))}</b>: that capture did not add up to 15. The cards go back on the table.</div></div>`;
+    if(ls.kind==='capture'){ghosts=[...ls.take,ls.card];notice=`${W} captures the highlighted cards${ls.escoba?': <b>¡Escoba!</b>':'.'}`}
+    else if(ls.kind==='opening'){ghosts=ls.take;notice=`The first four cards add up to ${ls.count*15}: ${W} gets <b>${ls.count} escoba${ls.count>1?'s':''}</b>.`}
+    else if(ls.kind==='steal'){ghosts=ls.take;ghostCls='going stolen';notice=`${W} steals the highlighted cards from <b>${esc(nm(s,ls.from))}</b>${ls.escoba?': <b>¡Escoba!</b>':'.'}`}
+    else if(ls.kind==='challenge')notice=`${W} challenged <b>${esc(nm(s,ls.from))}</b>: that capture did not add up to 15. The glowing cards go back on the table.`;
   }
   const freshSet=new Set(ls&&(ls.kind==='drop'?[ls.card]:ls.kind==='challenge'?ls.take:[]));
   const players=s.order.map((p,i)=>`<div class="pl${s.status==='playing'&&i===s.turnIdx?' turn':''}"><div class="nm"><span>${esc(nm(s,p))}${p===pid?' (you)':''}</span><span class="score">${s.scores[p]||0}</span></div>
@@ -319,8 +315,8 @@ function renderGame(){
   app.innerHTML=`<div class="topbar"><div><div class="eyebrow">Table <span class="code">${esc(s.code)}</span> · Round ${s.round} · to ${s.target}</div><h2>Escoba de 15</h2></div><div class="row"><span class="note">${s.deckCount||0} cards in deck</span>${back}</div></div>
   <div class="players">${players}</div>
   <section class="felt"><div class="eyebrow">Table</div>
-    <div class="cards">${(s.table||[]).map(c=>cardHTML(c,{act:'table',sel:selTable.has(c),hint:hint&&hint.take.includes(c),fresh:freshSet.has(c),dis:!tableClickable})).join('')||'<span class="note">The table is empty.</span>'}</div>
-    <div class="prompt">${prompt}</div>${live?`<div class="justslot">${just}</div>`:''}</section>
+    <div class="cards">${(s.table||[]).map(c=>cardHTML(c,{act:'table',sel:selTable.has(c),hint:hint&&hint.take.includes(c),fresh:freshSet.has(c),dis:!tableClickable})).join('')}${ghosts.map(c=>cardHTML(c,{dis:true,cls:ghostCls})).join('')}${!(s.table||[]).length&&!ghosts.length?'<span class="note">The table is empty.</span>':''}</div>
+    ${notice?`<div class="prompt notice">${notice}</div>`:''}<div class="prompt">${prompt}</div></section>
   ${bottom}
   <section class="panel"><div class="row" style="justify-content:space-between"><h3>Table talk</h3>${s.host===pid?'<button class="btn small ghost" data-act="end">Close table</button>':''}</div>${historyOn?`<ul class="log">${(s.log||[]).map(l=>`<li>${esc(l)}</li>`).join('')}</ul>`:'<p class="hiddenlog">Table talk is hidden at this table. Keep track of what everyone takes yourself.</p>'}</section>`;
 }
