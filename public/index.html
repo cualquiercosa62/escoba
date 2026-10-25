@@ -50,20 +50,20 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
 .bigcode{font-size:2.6rem;line-height:1}
 
 /* cards */
-.card{position:relative;width:68px;height:102px;border-radius:9px;background:var(--card);color:var(--card-ink);border:1px solid var(--card-edge);box-shadow:0 2px 0 rgba(0,0,0,.25),0 6px 14px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;font:inherit;transition:transform .15s ease, box-shadow .15s ease;flex:none}
+.card{position:relative;width:96px;height:144px;border-radius:11px;background:var(--card);color:var(--card-ink);border:1px solid var(--card-edge);box-shadow:0 2px 0 rgba(0,0,0,.25),0 6px 14px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;font:inherit;transition:transform .15s ease, box-shadow .15s ease;flex:none}
 .card:disabled{cursor:default}
 .card:not(:disabled):hover{transform:translateY(-3px)}
 .card.sel{transform:translateY(-8px);box-shadow:0 0 0 3px var(--gold),0 10px 18px rgba(0,0,0,.35)}
 .card.hint{box-shadow:0 0 0 3px #8fd3b4,0 6px 14px rgba(0,0,0,.25)}
-.card .cr{position:absolute;top:4px;left:6px;font-family:var(--display);font-weight:800;font-size:1.05rem;line-height:1}
-.card .cv{position:absolute;bottom:4px;right:6px;font-size:.68rem;font-weight:700;opacity:.65}
-.card .cn{position:absolute;bottom:4px;left:6px;font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;opacity:.7}
-.card .pip{width:38px;height:38px;display:block}
+.card .cr{position:absolute;top:6px;left:8px;font-family:var(--display);font-weight:800;font-size:1.55rem;line-height:1}
+.card .cv{position:absolute;bottom:6px;right:8px;font-size:.85rem;font-weight:700;opacity:.7}
+.card .cn{position:absolute;bottom:6px;left:8px;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;opacity:.7}
+.card .pip{width:56px;height:56px;display:block}
 .card .pip svg{width:100%;height:100%;display:block}
 .s-o .cr{color:var(--oro)} .s-c .cr{color:var(--copa)} .s-e .cr{color:var(--espada)} .s-b .cr{color:var(--basto)}
 .back{width:26px;height:38px;border-radius:5px;background:repeating-linear-gradient(45deg,#7d2a22 0 4px,#94372c 4px 8px);border:2px solid var(--card);box-shadow:0 1px 3px rgba(0,0,0,.4);flex:none}
 .backs{display:flex;gap:3px}
-.cards{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;min-height:106px;align-items:center}
+.cards{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;min-height:150px;align-items:center}
 
 /* table */
 .topbar{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;align-items:flex-end}
@@ -100,8 +100,19 @@ details ul{margin:10px 0 0;padding-left:20px;display:flex;flex-direction:column;
 .flash div{font-family:var(--display);font-weight:800;font-size:clamp(3rem,14vw,7rem);color:var(--gold);text-shadow:0 4px 0 #6b4d0c,0 10px 40px rgba(0,0,0,.6);animation:pop 1.8s ease forwards;text-align:center;line-height:1}
 .flash small{display:block;font-size:1.4rem;color:var(--ink);text-shadow:0 2px 8px rgba(0,0,0,.6)}
 @keyframes pop{0%{transform:scale(.4) rotate(-8deg);opacity:0}15%{transform:scale(1.08) rotate(2deg);opacity:1}70%{transform:scale(1);opacity:1}100%{transform:scale(1);opacity:0}}
-@media (prefers-reduced-motion:reduce){.card,.flash div{transition:none;animation:none}}
-@media (max-width:520px){.card{width:58px;height:88px}.card .pip{width:32px;height:32px}.cards{gap:8px}}
+@media (prefers-reduced-motion:reduce){.card,.flash div,.just{transition:none;animation:none}}
+@media (max-width:520px){.card .cn{display:none}.card{width:76px;height:114px}.card .pip{width:42px;height:42px}.card .cr{font-size:1.3rem}.cards{gap:8px;min-height:118px}}
+.card.fresh{box-shadow:0 0 0 3px #8fd3b4,0 6px 14px rgba(0,0,0,.25)}
+.just{width:100%;display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px;border-radius:16px;background:rgba(0,0,0,.28);border:1px solid var(--gold-deep);animation:fadeout 5s ease forwards}
+.just .who{font-size:1.05rem}
+.just .who b{color:var(--gold)}
+.just .cards{min-height:0}
+.just .plus{font-family:var(--display);font-size:1.6rem;color:var(--ink-dim);align-self:center}
+.just.steal{border-color:var(--danger)}
+@keyframes fadeout{0%{opacity:0;transform:translateY(-6px)}8%{opacity:1;transform:none}80%{opacity:1}100%{opacity:0}}
+.btn.steal{background:var(--danger);border-color:var(--danger);color:#2a0d05}
+.btn.steal:hover:not(:disabled){background:#eb9a87}
+.hiddenlog{font-size:.9rem;color:var(--ink-dim);margin:8px 0 0}
 </style>
 </head>
 <body>
@@ -126,7 +137,7 @@ function unstore(k){try{localStorage.removeItem(k)}catch(e){}}
 let pid=load('escoba.pid'); if(!pid){pid='p'+Math.random().toString(36).slice(2,12);store('escoba.pid',pid)}
 let myName=load('escoba.name')||'';
 let offline=false,ready=false,view='lobby',code=null,game=null,es=null,openGames=[];
-let selHand=null,selTable=new Set(),hint=null,busy=false,lastRev=-1,lastFlash=null;
+let selHand=null,selTable=new Set(),hint=null,busy=false,lastRev=-1,lastFlash=null,shownRev=null,lastShow=null;
 function toast(msg){const t=$('#toast');t.textContent=msg;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,2800)}
 function getName(){const v=($('#name')?.value||myName||'').trim().slice(0,20);if(!v){toast('Type your name first.');$('#name')?.focus();return null}myName=v;store('escoba.name',v);return v}
 
@@ -138,11 +149,11 @@ async function post(url,body){
 }
 const act=(type,extra={})=>post('/api/action',{type,...extra});
 
-async function createGame(){const name=getName();if(!name)return;const j=await post('/api/create',{name,target:+($('#target')?.value||15)});if(j)openGame(j.code)}
+async function createGame(){const name=getName();if(!name)return;const history=$('#history').value==='on',hints=$('#hints').value==='on';store('escoba.opts',JSON.stringify({history,hints}));const j=await post('/api/create',{name,target:+($('#target')?.value||15),history,hints});if(j)openGame(j.code)}
 function joinSeat(){const name=getName();if(name)act('join',{name})}
 
 function openGame(c,quiet){
-  c=c.toUpperCase();if(es)es.close();code=c;game=null;view='game';selHand=null;selTable.clear();hint=null;lastFlash=null;lastRev=-1;
+  c=c.toUpperCase();if(es)es.close();code=c;game=null;view='game';selHand=null;selTable.clear();hint=null;lastFlash=null;lastRev=-1;shownRev=null;lastShow=null;
   try{history.replaceState(null,'','#'+c)}catch(e){}
   render();
   es=new EventSource('/api/events?code='+encodeURIComponent(c)+'&pid='+encodeURIComponent(pid));
@@ -152,6 +163,8 @@ function openGame(c,quiet){
     if(s.gone){toast('The table was closed.');return leave()}
     game=s;store('escoba.game',c);
     if(s.rev!==lastRev){lastRev=s.rev;selHand=(s.hands?.[pid]||[]).includes(selHand)?selHand:null;for(const t of [...selTable])if(!s.table?.includes(t))selTable.delete(t);hint=null}
+    if(shownRev===null)shownRev=s.last?.rev||0;
+    else if(s.last&&s.last.rev===s.rev&&s.last.rev!==shownRev){shownRev=s.last.rev;lastShow={...s.last,until:Date.now()+5000};clearTimeout(openGame.t);openGame.t=setTimeout(()=>{lastShow=null;if(view==='game')render()},5000)}
     if(lastFlash===null)lastFlash=s.flash?.at||0;
     else if(s.flash&&s.flash.at>lastFlash){lastFlash=s.flash.at;showFlash(nm(s,s.flash.pid))}
     if(view==='game')render();
@@ -169,9 +182,10 @@ async function pollLobby(){
 }
 
 /* ---------- render ---------- */
+const half=n=>n===null||n===undefined?'—':(n%1?Math.floor(n)+'½':String(n));
 function cardHTML(c,o={}){
   const r=+c.slice(1);
-  return `<button class="card s-${c[0]}${o.sel?' sel':''}${o.hint?' hint':''}" ${o.act?`data-act="${o.act}" data-card="${c}"`:''} ${o.dis?'disabled':''} aria-label="${label(c)}, worth ${val(c)}" aria-pressed="${!!o.sel}"><span class="cr">${r}</span><span class="pip">${SVG[c[0]]}</span><span class="cn">${RNAME[r]||''}</span><span class="cv">${val(c)}</span></button>`;
+  return `<button class="card s-${c[0]}${o.sel?' sel':''}${o.hint?' hint':''}${o.fresh?' fresh':''}" ${o.act?`data-act="${o.act}" data-card="${c}"`:''} ${o.dis?'disabled':''} aria-label="${label(c)}, worth ${val(c)}" aria-pressed="${!!o.sel}"><span class="cr">${r}</span><span class="pip">${SVG[c[0]]}</span><span class="cn">${RNAME[r]||''}</span><span class="cv">${val(c)}</span></button>`;
 }
 function render(){view==='lobby'?renderLobby():renderGame()}
 
@@ -180,14 +194,18 @@ const RULES=`<details class="panel"><summary>How to play</summary><ul>
 <li>Everyone gets 3 cards and 4 go face up on the table. On your turn play one card: either capture table cards that add up to <b>15</b> together with your card, or lay it down.</li>
 <li>To capture: tap the table cards you want, then a card from your hand, then <b>Capture</b>. Clearing the whole table is an <b>escoba</b>, worth 1 point.</li>
 <li>When hands run out, 3 more are dealt until the deck is gone. With 5 players the last deal is 1 card each, and the spare card goes on the table. Cards left on the table go to whoever captured last.</li>
-<li>Each round scores 1 point each for: most cards, most oros, most sevens, the 7 de oros, every escoba, and 1 extra for all ten oros. Ties score nothing.</li>
+<li>Mistakes cost you. If a player lays a card down when it could have made 15, any other player can tap that card plus the table cards that make 15 and press <b>¡Robar!</b> to take them. This works until the next card is played. Clearing the table this way counts as an escoba.</li>
+<li>After every move, the cards that were played and taken stay on show for a few seconds. If table talk is hidden, that is your only chance to see them, so pay attention.</li>
+<li>Each round scores 1 point each for: most cards, most oros, <b>las 70</b>, the 7 de oros, every escoba, and 1 extra for all ten oros. Ties score nothing.</li>
+<li><b>Las 70:</b> take your best card in each of the four suits and add them up. Sevens count 7, sixes 6, aces 5½, then 5, 4, 3, 2. Sota, Caballo and Rey (negras) count 0, but they still count as having that suit. If you don't have a card in all four suits, you can't win this point.</li>
 <li>First player to reach the target score wins. A tie at the top plays another round.</li></ul></details>`;
 
 function renderLobby(){
   const blocked=offline?`<div class="panel warn">Can't reach the game server. Check your connection; this page retries on its own.</div>`:'';
-  const list=openGames.length?`<ul class="list">${openGames.map(g=>{const ps=g.names||[];return `<li><span><span class="code">${esc(g.code)}</span> &nbsp;${esc(ps.join(', '))} <span class="note">· ${ps.length}/6 · to ${g.target}</span></span><button class="btn small ghost" data-act="open" data-code="${esc(g.code)}">Open</button></li>`}).join('')}</ul>`
+  const list=openGames.length?`<ul class="list">${openGames.map(g=>{const ps=g.names||[];return `<li><span><span class="code">${esc(g.code)}</span> &nbsp;${esc(ps.join(', '))} <span class="note">· ${ps.length}/6 · to ${g.target}${g.opts&&!g.opts.history?' · no table talk':''}</span></span><button class="btn small ghost" data-act="open" data-code="${esc(g.code)}">Open</button></li>`}).join('')}</ul>`
     :`<p class="note">${ready?'No tables waiting right now. Start one and tell your friends the code.':'Looking for open tables…'}</p>`;
   if($('#lobby')){$('#openlist').innerHTML=list;$('#lobbynote').innerHTML=blocked;return}
+  let savedOpts={};try{savedOpts=JSON.parse(load('escoba.opts')||'{}')}catch(e){}
   app.innerHTML=`<header><div class="eyebrow">Online card table · 2 to 6 players</div><h1>Escoba de 15</h1><p class="sub">Sweep the table, count your oros, and keep an eye on the 7 de oros.</p></header>
   <div id="lobbynote">${blocked}</div>
   <div class="grid2" id="lobby">
@@ -195,6 +213,8 @@ function renderLobby(){
       <h2>Start a table</h2>
       <label for="name">Your name<input id="name" maxlength="20" autocomplete="nickname" value="${esc(myName)}" placeholder="e.g. Sil"></label>
       <label for="target">Play to<select id="target"><option value="15" selected>15 points</option><option value="21">21 points</option><option value="31">31 points</option></select></label>
+      <label for="history">Table talk (history of moves)<select id="history"><option value="off" ${savedOpts.history?'':'selected'}>Hidden: players must remember</option><option value="on" ${savedOpts.history?'selected':''}>Shown</option></select></label>
+      <label for="hints">Hint button<select id="hints"><option value="off" ${savedOpts.hints?'':'selected'}>Off</option><option value="on" ${savedOpts.hints?'selected':''}>On</option></select></label>
       <div class="row"><button class="btn" data-act="create">Create table</button></div>
       <hr style="border:0;border-top:1px solid var(--felt-line);width:100%;margin:2px 0">
       <label for="joincode">Have a code?<div class="row"><input id="joincode" maxlength="4" placeholder="ABCD" style="text-transform:uppercase;width:7.5em;letter-spacing:.15em"><button class="btn ghost" data-act="joincode">Go to table</button></div></label>
@@ -213,7 +233,7 @@ function renderGame(){
     app.innerHTML=`<div class="topbar"><div><div class="eyebrow">Table code</div><div class="code bigcode">${esc(s.code)}</div></div>${back}</div>
     <section class="panel" style="display:flex;flex-direction:column;gap:12px">
       <h2>Waiting for players</h2>
-      <p class="note">Friends open this website and enter the code <b class="code">${esc(s.code)}</b>, or pick it from Open tables. Playing to ${s.target}.</p>
+      <p class="note">Friends open this website and enter the code <b class="code">${esc(s.code)}</b>, or pick it from Open tables. Playing to ${s.target}. Table talk ${s.opts&&!s.opts.history?'hidden':'shown'}, hints ${s.opts&&!s.opts.hints?'off':'on'}.</p>
       <ul class="list">${ps.map(([p,v],i)=>`<li><span>${esc(v.name)}${p===pid?' <span class="note">(you)</span>':''}</span><span class="tag${p===s.host?' on':''}">${p===s.host?'host':'seat '+(i+1)}</span></li>`).join('')}</ul>
       ${!seated?`<div class="row"><label for="name">Your name<input id="name" maxlength="20" value="${esc(myName)}" placeholder="Your name"></label><button class="btn" data-act="join" ${ps.length>=6?'disabled':''}>Take a seat</button></div>`:''}
       <div class="row">${host?`<button class="btn" data-act="start" ${ps.length<2?'disabled':''}>Deal the cards</button><span class="note">${ps.length<2?'Needs at least 2 players.':ps.length+' players ready.'}</span>`:(seated?`<span class="note">Waiting for ${esc(nm(s,s.host))} to deal.</span><button class="btn small ghost" data-act="unseat">Give up seat</button>`:'')}</div>
@@ -224,13 +244,28 @@ function renderGame(){
   const myTurn=s.status==='playing'&&s.order[s.turnIdx]===me;
   const hand=me?(s.hands[me]||[]):[];
   const tsum=[...selTable].reduce((a,c)=>a+val(c),0);
+  const hintsOn=!s.opts||s.opts.hints, historyOn=!s.opts||s.opts.history;
+  const drop=s.status==='playing'?s.lastDrop:null;
+  const canStealNow=!!(me&&drop&&drop.by!==me);
+  const tableClickable=myTurn||canStealNow;
+  const canSteal=canStealNow&&!selHand&&selTable.has(drop.card)&&selTable.size>1&&tsum===15;
+  const ls=lastShow&&lastShow.until>Date.now()?lastShow:null;
+  let just='';
+  if(ls&&s.status==='playing'){
+    const W=`<b>${esc(nm(s,ls.pid))}</b>`;
+    if(ls.kind==='capture')just=`<div class="just"><div class="who">${W} played${ls.escoba?' and swept the table: <b>¡Escoba!</b>':' and took'}</div><div class="cards">${cardHTML(ls.card,{dis:true})}<span class="plus">+</span>${ls.take.map(c=>cardHTML(c,{dis:true})).join('')}</div></div>`;
+    else if(ls.kind==='drop')just=`<div class="just"><div class="who">${W} laid down</div><div class="cards">${cardHTML(ls.card,{dis:true})}</div></div>`;
+    else if(ls.kind==='steal')just=`<div class="just steal"><div class="who">${W} stole from <b>${esc(nm(s,ls.from))}</b>${ls.escoba?' — <b>¡Escoba!</b>':''}</div><div class="cards">${ls.take.map(c=>cardHTML(c,{dis:true})).join('')}</div></div>`;
+  }
   const total=(selHand?val(selHand):0)+tsum;
   const players=s.order.map((p,i)=>`<div class="pl${s.status==='playing'&&i===s.turnIdx?' turn':''}"><div class="nm"><span>${esc(nm(s,p))}${p===pid?' (you)':''}</span><span class="score">${s.scores[p]||0}</span></div>
     <div class="meta"><span class="backs" aria-label="${(s.hands[p]||[]).length} cards in hand">${(s.hands[p]||[]).map(()=>'<span class="back"></span>').join('')}</span><span>${(s.captures[p]||[]).length} taken</span>${s.escobas[p]?`<span class="tag on">${s.escobas[p]} escoba${s.escobas[p]>1?'s':''}</span>`:''}${i===s.dealerIdx?'<span class="tag">deals</span>':''}</div></div>`).join('');
   let prompt;
   if(s.status!=='playing')prompt='';
   else if(!me)prompt=`You are watching. It's <b>${esc(nm(s,s.order[s.turnIdx]))}</b>'s turn.`;
+  else if(!myTurn&&selTable.size)prompt=`<span class="meter ${tsum===15?'ok':tsum>15?'over':''}">${tsum} / 15</span>`;
   else if(!myTurn)prompt=`Waiting for <b>${esc(nm(s,s.order[s.turnIdx]))}</b>…`;
+  else if(!selHand&&selTable.size)prompt=`<span class="meter ${tsum===15?'ok':tsum>15?'over':''}">${tsum} / 15</span>`;
   else if(!selHand)prompt=`<b>Your turn.</b> Tap table cards to capture, then a card from your hand.`;
   else prompt=`<span class="meter ${total===15?'ok':total>15?'over':''}">${total} / 15</span>`;
   const canCap=myTurn&&selHand&&selTable.size&&total===15;
@@ -239,26 +274,27 @@ function renderGame(){
   if(s.status==='playing'){
     bottom=`<section class="hand"><div class="eyebrow">${me?'Your hand':'Spectating'}</div>
     <div class="cards">${me?hand.map(c=>cardHTML(c,{act:'hand',sel:c===selHand,hint:hint&&hint.hand===c,dis:!myTurn})).join('')||'<span class="note">No cards in hand.</span>':''}</div>
-    ${me?`<div class="actions"><button class="btn" data-act="capture" ${canCap?'':'disabled'}>Capture</button><button class="btn ghost" data-act="drop" ${canDrop?'':'disabled'}>Lay it down</button><button class="btn ghost small" data-act="hint" ${myTurn?'':'disabled'}>Hint</button></div>`:''}</section>`;
+    ${me?`<div class="actions"><button class="btn" data-act="capture" ${canCap?'':'disabled'}>Capture</button><button class="btn ghost" data-act="drop" ${canDrop?'':'disabled'}>Lay it down</button>${canStealNow?`<button class="btn steal" data-act="steal" ${canSteal?'':'disabled'} title="Tap the card ${esc(nm(s,drop.by))} just laid down plus table cards that make 15">¡Robar!</button>`:''}${hintsOn?`<button class="btn ghost small" data-act="hint" ${myTurn?'':'disabled'}>Hint</button>`:''}</div>
+    ${canStealNow?`<p class="note" style="text-align:center;margin:0">Did ${esc(nm(s,drop.by))} miss a 15? Tap their card and the table cards that make 15, then press ¡Robar!</p>`:''}`:''}</section>`;
   }else{
     const rows=s.roundResult||[];
     const tick=b=>b?'<span class="win">✓</span>':'';
     bottom=`<section class="panel" style="display:flex;flex-direction:column;gap:12px">
       <h2>${s.status==='gameover'?`${esc(nm(s,s.winner))} wins!`:`Round ${s.round} results`}</h2>
-      <div class="scroll"><table class="res"><thead><tr><th>Player</th><th>Cards</th><th>Oros</th><th>Sevens</th><th>7 de oros</th><th>Escobas</th><th>Round</th><th>Total</th></tr></thead><tbody>
-      ${rows.map(r=>`<tr><td>${esc(nm(s,r.pid))}</td><td>${r.cards} ${tick(r.w_cards)}</td><td>${r.oros} ${tick(r.w_oros)}</td><td>${r.sevens} ${tick(r.w_sevens)}</td><td>${r.velo?'<span class="win">✓</span>':'–'}</td><td>${r.escobas}</td><td class="win">+${r.pts}</td><td>${s.scores[r.pid]}</td></tr>`).join('')}
+      <div class="scroll"><table class="res"><thead><tr><th>Player</th><th>Cards</th><th>Oros</th><th>Las 70</th><th>7 de oros</th><th>Escobas</th><th>Round</th><th>Total</th></tr></thead><tbody>
+      ${rows.map(r=>`<tr><td>${esc(nm(s,r.pid))}</td><td>${r.cards} ${tick(r.w_cards)}</td><td>${r.oros} ${tick(r.w_oros)}</td><td>${half(r.setenta)} ${tick(r.w_setenta)}</td><td>${r.velo?'<span class="win">✓</span>':'–'}</td><td>${r.escobas}</td><td class="win">+${r.pts}</td><td>${s.scores[r.pid]}</td></tr>`).join('')}
       </tbody></table></div>
-      <p class="note">✓ marks who won each point. Playing to ${s.target}.</p>
+      <p class="note">✓ marks who won each point. Las 70 shows — when a player is missing a suit. Playing to ${s.target}.</p>
       <div class="row">${s.status==='gameover'?`<button class="btn" data-act="rematch" ${me?'':'disabled'}>Play again, same table</button>`:`<button class="btn" data-act="next" ${me?'':'disabled'}>Deal next round</button>`}</div>
     </section>`;
   }
   app.innerHTML=`<div class="topbar"><div><div class="eyebrow">Table <span class="code">${esc(s.code)}</span> · Round ${s.round} · to ${s.target}</div><h2>Escoba de 15</h2></div><div class="row"><span class="note">${s.deckCount||0} cards in deck</span>${back}</div></div>
   <div class="players">${players}</div>
-  <section class="felt"><div class="eyebrow">Table</div>
-    <div class="cards">${(s.table||[]).map(c=>cardHTML(c,{act:'table',sel:selTable.has(c),hint:hint&&hint.take.includes(c),dis:!myTurn})).join('')||'<span class="note">The table is empty.</span>'}</div>
+  <section class="felt">${just}<div class="eyebrow">Table</div>
+    <div class="cards">${(s.table||[]).map(c=>cardHTML(c,{act:'table',sel:selTable.has(c),hint:hint&&hint.take.includes(c),fresh:ls&&ls.kind==='drop'&&ls.card===c,dis:!tableClickable})).join('')||'<span class="note">The table is empty.</span>'}</div>
     <div class="prompt">${prompt}</div></section>
   ${bottom}
-  <section class="panel"><div class="row" style="justify-content:space-between"><h3>Table talk</h3>${s.host===pid?'<button class="btn small ghost" data-act="end">Close table</button>':''}</div><ul class="log">${(s.log||[]).map(l=>`<li>${esc(l)}</li>`).join('')}</ul></section>`;
+  <section class="panel"><div class="row" style="justify-content:space-between"><h3>Table talk</h3>${s.host===pid?'<button class="btn small ghost" data-act="end">Close table</button>':''}</div>${historyOn?`<ul class="log">${(s.log||[]).map(l=>`<li>${esc(l)}</li>`).join('')}</ul>`:'<p class="hiddenlog">Table talk is hidden at this table. Keep track of what everyone takes yourself.</p>'}</section>`;
 }
 
 app.addEventListener('click',e=>{
@@ -275,6 +311,7 @@ app.addEventListener('click',e=>{
     case 'hand':selHand=selHand===c?null:c;hint=null;return render();
     case 'table':selTable.has(c)?selTable.delete(c):selTable.add(c);hint=null;return render();
     case 'capture':return act('play',{card:selHand,take:[...selTable]});
+    case 'steal':return act('steal',{take:[...selTable]});
     case 'drop':return act('play',{card:selHand,take:[]});
     case 'hint':{hint=findCapture(game.hands[pid]||[],game.table||[]);if(!hint)toast('No capture adds to 15. Lay a card down.');else{selHand=hint.hand;selTable=new Set(hint.take)}return render()}
     case 'next':return act('next');

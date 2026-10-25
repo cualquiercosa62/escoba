@@ -26,6 +26,7 @@ const cleanId = p => /^[a-z0-9]{6,40}$/i.test(String(p || '')) ? String(p) : nul
 // What one player is allowed to see: their own hand, but only card counts for everyone else.
 function viewFor(s, pid) {
   const v = { ...s, deck: undefined, deckCount: (s.deck || []).length, hands: {} };
+  if (s.opts && !s.opts.history) v.log = [];
   for (const p of s.order || []) {
     const h = (s.hands && s.hands[p]) || [];
     v.hands[p] = p === pid ? h : h.map(() => 'x');
@@ -68,6 +69,10 @@ function apply(s, pid, a) {
       s.dealerIdx = s.order.length - 1; s.round = 0; s.log = [];
       E.newRound(s); return null;
     }
+    case 'steal': {
+      const take = Array.isArray(a.take) ? a.take.map(String) : [];
+      return E.steal(s, pid, take);
+    }
     case 'play': {
       const take = Array.isArray(a.take) ? a.take.map(String) : [];
       return E.play(s, pid, String(a.card || ''), take);
@@ -108,7 +113,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && url.pathname === '/api/lobby') {
     const list = [...games.values()].filter(g => g.status === 'lobby')
       .sort((a, b) => b.createdAt - a.createdAt).slice(0, 20)
-      .map(g => ({ code: g.code, target: g.target, names: Object.values(g.players).map(p => p.name) }));
+      .map(g => ({ code: g.code, target: g.target, opts: g.opts, names: Object.values(g.players).map(p => p.name) }));
     return json(res, 200, list);
   }
 
@@ -132,7 +137,8 @@ const server = http.createServer(async (req, res) => {
     if (!pid || !name) return json(res, 400, { error: 'Type your name first.' });
     const code = newCode(), now = Date.now();
     const target = [15, 21, 31].includes(+b.target) ? +b.target : 15;
-    games.set(code, { code, host: pid, status: 'lobby', target, createdAt: now, updatedAt: now, players: { [pid]: { name, joinedAt: now } }, rev: 0 });
+    const opts = { history: !!b.history, hints: !!b.hints };
+    games.set(code, { code, host: pid, status: 'lobby', target, opts, createdAt: now, updatedAt: now, players: { [pid]: { name, joinedAt: now } }, rev: 0 });
     return json(res, 200, { code });
   }
 
@@ -146,6 +152,7 @@ const server = http.createServer(async (req, res) => {
     if (err === 'CLOSE') { games.delete(code); broadcast(code); streams.delete(code); return json(res, 200, { ok: true }); }
     if (err) return json(res, 400, { error: err });
     s.rev = (s.rev || 0) + 1; s.updatedAt = Date.now();
+    if (s.last && !s.last.rev) s.last.rev = s.rev;
     broadcast(code);
     return json(res, 200, { ok: true });
   }
