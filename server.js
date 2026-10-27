@@ -4,6 +4,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const E = require('./public/rules.js');
+const BOT = require('./bot.js');
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC = path.join(__dirname, 'public');
@@ -57,6 +58,22 @@ function apply(s, pid, a) {
       s.players[pid] = { name, joinedAt: seated ? s.players[pid].joinedAt : Date.now() };
       return null;
     }
+    case 'addbot': {
+      if (s.host !== pid) return 'Only the host can add computer players.';
+      if (s.status !== 'lobby') return 'This game already started.';
+      if (Object.keys(s.players).length >= MAX_PLAYERS) return `This table is full (${MAX_PLAYERS} players).`;
+      const level = a.level === 'hard' ? 'hard' : 'easy';
+      const n = Object.values(s.players).filter(p => p.bot).length + 1;
+      const id = 'bot' + Math.random().toString(36).slice(2, 10);
+      s.players[id] = { name: `Computer${n > 1 ? ' ' + n : ''} (${level})`, joinedAt: Date.now(), bot: true, level };
+      return null;
+    }
+    case 'removebot': {
+      if (s.host !== pid) return 'Only the host can remove computer players.';
+      if (s.status !== 'lobby') return 'This game already started.';
+      if (!s.players[a.id] || !s.players[a.id].bot) return 'That is not a computer player.';
+      delete s.players[a.id]; return null;
+    }
     case 'unseat': {
       if (s.status !== 'lobby') return 'The game already started.';
       delete s.players[pid];
@@ -100,6 +117,21 @@ function apply(s, pid, a) {
   }
   return 'Unknown action.';
 }
+
+// Record a change, tell everyone, and let the computer players react.
+function changed(code, s) {
+  s.rev = (s.rev || 0) + 1; s.updatedAt = Date.now();
+  if (s.last && !s.last.rev) s.last.rev = s.rev;
+  broadcast(code);
+  bots.schedule(code, s);
+}
+const bots = BOT.makeScheduler((code, pid, fn) => {
+  const s = games.get(code);
+  if (!s) return;
+  const err = fn(s);
+  if (err) return bots.schedule(code, s);
+  changed(code, s);
+});
 
 function readBody(req) {
   return new Promise(resolve => {
@@ -152,13 +184,11 @@ const server = http.createServer(async (req, res) => {
     const code = String(b.code || '').toUpperCase(), pid = cleanId(b.pid);
     const s = games.get(code);
     if (!s) return json(res, 404, { error: 'This table no longer exists.' });
-    if (!pid) return json(res, 400, { error: 'Reload the page and try again.' });
+    if (!pid || BOT.isBot(s, pid)) return json(res, 400, { error: 'Reload the page and try again.' });
     const err = apply(s, pid, b);
-    if (err === 'CLOSE') { games.delete(code); broadcast(code); streams.delete(code); return json(res, 200, { ok: true }); }
+    if (err === 'CLOSE') { games.delete(code); broadcast(code); streams.delete(code); bots.schedule(code, null); return json(res, 200, { ok: true }); }
     if (err) return json(res, 400, { error: err });
-    s.rev = (s.rev || 0) + 1; s.updatedAt = Date.now();
-    if (s.last && !s.last.rev) s.last.rev = s.rev;
-    broadcast(code);
+    changed(code, s);
     return json(res, 200, { ok: true });
   }
 

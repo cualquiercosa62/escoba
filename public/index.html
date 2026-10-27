@@ -166,7 +166,7 @@ function quietAct(type,extra){
     .catch(()=>toast('Could not reach the server. Try again.'));
 }
 
-async function createGame(){const name=getName();if(!name)return;const history=$('#history').value==='on',hints=$('#hints').value==='on',penalty=+$('#penalty').value;store('escoba.opts',JSON.stringify({history,hints,penalty}));const j=await post('/api/create',{name,target:+($('#target')?.value||15),history,hints,penalty});if(j)openGame(j.code)}
+async function createGame(solo){const name=getName();if(!name)return;const history=$('#history').value==='on',hints=$('#hints').value==='on',penalty=+$('#penalty').value;store('escoba.opts',JSON.stringify({history,hints,penalty}));const j=await post('/api/create',{name,target:+($('#target')?.value||15),history,hints,penalty});if(!j)return;const level=$('#botlevel')?.value||'easy';openGame(j.code);if(solo){store('escoba.botlevel',level);await act('addbot',{level});await act('start')}}
 function joinSeat(){const name=getName();if(name)act('join',{name})}
 
 function openGame(c,quiet){
@@ -217,6 +217,7 @@ const RULES=`<details class="panel"><summary>How to play</summary><ul>
 <li>If the first four cards on the table add up to 15 or 30, the first player to play takes them as 1 or 2 escobas.</li>
 <li>When someone captures, their card and the cards they took move to the end of the table row and stay highlighted for 5 seconds. A card laid down is added to the right of the table and glows for a moment. Nobody sees how many cards anyone has taken. If table talk is hidden, that is your only chance to see them, so pay attention.</li>
 <li>Wrong captures that nobody challenged are revealed when the round is counted, and each one costs the points chosen for the table.</li>
+<li>Computer players can join any table. Easy ones sometimes miss a 15 and rarely catch your mistakes. Hard ones play well and almost always catch them. They never make wrong captures themselves.</li>
 <li>When all the cards are played, there is one last chance to steal or challenge before anyone presses <b>Count the cards</b>.</li>
 <li>Each round scores 1 point each for: most cards, most oros, <b>los 70</b>, the 7 de oros, every escoba, and 1 extra for all ten oros. Ties score nothing.</li>
 <li><b>Los 70:</b> take your best card in each of the four suits and add them up. Sevens count 7, sixes 6, aces 5½, then 5, 4, 3, 2. Sota, Caballo and Rey (negras) count 0, but they still count as having that suit. If you don't have a card in all four suits, you can't win this point.</li>
@@ -239,6 +240,7 @@ function renderLobby(){
       <label for="penalty">Wrong capture nobody caught costs<select id="penalty">${[0,1,2,3].map(n=>`<option value="${n}" ${(savedOpts.penalty??1)===n?'selected':''}>${n?n+' point'+(n>1?'s':''):'Nothing'}</option>`).join('')}</select></label>
       <label for="hints">Hint button<select id="hints"><option value="off" ${savedOpts.hints?'':'selected'}>Off</option><option value="on" ${savedOpts.hints?'selected':''}>On</option></select></label>
       <div class="row"><button class="btn" data-act="create">Create table</button></div>
+      <div class="row" style="align-items:flex-end"><label for="botlevel">Computer plays<select id="botlevel"><option value="easy" ${load('escoba.botlevel')==='hard'?'':'selected'}>Easy</option><option value="hard" ${load('escoba.botlevel')==='hard'?'selected':''}>Hard</option></select></label><button class="btn ghost" data-act="solo">Play against the computer</button></div>
       <hr style="border:0;border-top:1px solid var(--felt-line);width:100%;margin:2px 0">
       <label for="joincode">Have a code?<div class="row"><input id="joincode" maxlength="4" placeholder="ABCD" style="text-transform:uppercase;width:7.5em;letter-spacing:.15em"><button class="btn ghost" data-act="joincode">Go to table</button></div></label>
     </section>
@@ -257,7 +259,8 @@ function renderGame(){
     <section class="panel" style="display:flex;flex-direction:column;gap:12px">
       <h2>Waiting for players</h2>
       <p class="note">Friends open this website and enter the code <b class="code">${esc(s.code)}</b>, or pick it from Open tables. Playing to ${s.target}. Table talk ${s.opts&&!s.opts.history?'hidden':'shown'}, hints ${s.opts&&!s.opts.hints?'off':'on'}. An uncaught wrong capture costs ${s.opts&&s.opts.penalty!==undefined?s.opts.penalty:0} point${s.opts&&s.opts.penalty===1?'':'s'}.</p>
-      <ul class="list">${ps.map(([p,v],i)=>`<li><span>${esc(v.name)}${p===pid?' <span class="note">(you)</span>':''}</span><span class="tag${p===s.host?' on':''}">${p===s.host?'host':'seat '+(i+1)}</span></li>`).join('')}</ul>
+      <ul class="list">${ps.map(([p,v],i)=>`<li><span>${esc(v.name)}${p===pid?' <span class="note">(you)</span>':''}</span><span class="row" style="gap:6px">${v.bot?'<span class="tag">computer</span>':''}<span class="tag${p===s.host?' on':''}">${p===s.host?'host':'seat '+(i+1)}</span>${v.bot&&host?`<button class="btn small ghost" data-act="removebot" data-id="${esc(p)}" aria-label="Remove ${esc(v.name)}">Remove</button>`:''}</span></li>`).join('')}</ul>
+      ${host&&ps.length<6?`<div class="row" style="align-items:flex-end"><label for="addlevel">Add a computer player<select id="addlevel"><option value="easy">Easy</option><option value="hard">Hard</option></select></label><button class="btn small ghost" data-act="addbot">Add computer</button></div>`:''}
       ${!seated?`<div class="row"><label for="name">Your name<input id="name" maxlength="20" value="${esc(myName)}" placeholder="Your name"></label><button class="btn" data-act="join" ${ps.length>=6?'disabled':''}>Take a seat</button></div>`:''}
       <div class="row">${host?`<button class="btn" data-act="start" ${ps.length<2?'disabled':''}>Deal the cards</button><span class="note">${ps.length<2?'Needs at least 2 players.':ps.length+' players ready.'}</span>`:(seated?`<span class="note">Waiting for ${esc(nm(s,s.host))} to deal.</span><button class="btn small ghost" data-act="unseat">Give up seat</button>`:'')}</div>
     </section>${RULES}`;
@@ -340,6 +343,9 @@ app.addEventListener('click',e=>{
     case 'join':return joinSeat();
     case 'unseat':return act('unseat').then(j=>j&&leave());
     case 'start':return act('start');
+    case 'solo':return createGame(true);
+    case 'addbot':return act('addbot',{level:$('#addlevel').value});
+    case 'removebot':return act('removebot',{id:b.dataset.id});
     case 'hand':selHand=selHand===c?null:c;hint=null;return render();
     case 'table':selTable.has(c)?selTable.delete(c):selTable.add(c);hint=null;return render();
     case 'capture':return act('play',{card:selHand,take:[...selTable]});
